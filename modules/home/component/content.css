@@ -1,0 +1,12 @@
+@component Content {
+    display: flex;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: #4C587B;
+
+    @d info {
+        color: inherit;
+    }
+}

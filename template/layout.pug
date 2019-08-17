@@ -1,0 +1,25 @@
+//- layout.pug
+doctype html
+html
+    head
+        title #{title}
+        meta(charset="utf-8")
+        meta(http-equiv="X-UA-Compatible" content="IE=edge")
+        meta(name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no")
+        link(rel='icon' href='/static/favicon.ico')
+        block defaultStyle
+            style.
+                html { color: #222222; font-family: "Avenir", Helvetica, Arial, sans-serif }
+        block head
+
+    body
+        block noscript
+            noscript
+                | We're sorry but app doesn't work properly without JavaScript enabled. Please enable it to continue.
+
+        block content
+
+        block footer
+
+        block scripts
+            console.log('Hello word')

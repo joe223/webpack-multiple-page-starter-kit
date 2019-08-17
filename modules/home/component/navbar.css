@@ -1,0 +1,17 @@
+@import "../style/_var.css";
+
+@component Navbar {
+    position: relative;
+    position: sticky;
+    margin: -10px auto 0 auto;
+    max-width: 1066px;
+    height: 66px;
+    line-height: 66px;
+    border: 2px solid var(--theme-color);
+    border-radius: 2px;
+    font-size: 18px;
+    font-weight: 500;
+    background: #FFF;
+    border-left-width: 18px;
+    box-shadow: -9px 22px 0 -9px var(--theme-color), -9px -13px 0 -9px var(--theme-color);
+}
