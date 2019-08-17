@@ -2,7 +2,7 @@
 
 Depend on webpack4 and PostCSS.
 
-# Get start
+## Get start
 
 ```shell
 npm install
