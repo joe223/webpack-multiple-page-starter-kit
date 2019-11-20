@@ -11,6 +11,7 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin
 
 const config = require('../config')
+const WebDebugger = require('./debugger')
 const modules = require('../config/modules')
 const packageConfig = require('../package.json')
 
@@ -42,6 +43,10 @@ exports.cssLoaders = function (options) {
     // generate loader string to be used with extract text plugin
     function generateLoaders(loader, loaderOptions) {
         const loaders = options.usePostCSS ? [cssLoader, postcssLoader] : [cssLoader]
+
+        if (options.usePostCSS) {
+            loaders.push(postcssLoader)
+        }
 
         if (loader) {
             loaders.push({
@@ -109,6 +114,10 @@ exports.createNotifierCallback = () => {
 
 exports.genWebpackConfig = (buildType = 'dev') => {
     const buildConfig = require(`./webpack.${buildType}.conf.js`)
+    // resolve client env
+    const clientEnv = resolveClientEnv()
+
+    console.log('clientEnv:', clientEnv)
 
     return Object.keys(modules).map(moduleName => {
         const conf = {
@@ -124,17 +133,28 @@ exports.genWebpackConfig = (buildType = 'dev') => {
         // Single entry file
         if (modules[moduleName].entry) {
             const defaultEntryName = 'index'
+            const entry = modules[moduleName]
+
+            entry.templateParameters = {
+                WEB_ENV: clientEnv,
+                ...entry.templateParameters
+            }
 
             conf.entry[defaultEntryName] = resolvePath(modules[moduleName].entry)
             conf.plugins.push(genHtmlWebpackPluginConfig(
                 buildType,
-                modules[moduleName],
+                entry,
                 defaultEntryName,
                 'index.html'))
         // Multiple entry file
         } else {
             Object.keys(modules[moduleName].entries).forEach(entryName => {
                 const entry = modules[moduleName].entries[entryName]
+
+                entry.templateParameters = {
+                    WEB_ENV: clientEnv,
+                    ...entry.templateParameters
+                }
 
                 conf.entry[entryName] = resolvePath(entry.entry)
                 conf.plugins.push(genHtmlWebpackPluginConfig(
@@ -143,6 +163,15 @@ exports.genWebpackConfig = (buildType = 'dev') => {
                     entryName,
                     entry.output || `${entryName}/index.html`))
             })
+        }
+
+        if (buildType === 'prod' || modules[moduleName].splitMediaQueryCSS) {
+            conf.plugins.push(new MiniCssExtractPlugin({
+                // Options similar to the same options in webpackOptions.output
+                // both options are optional
+                filename: buildType === 'prod' ? '[name].[hash].css' : '[name].css',
+                chunkFilename: buildType === 'prod' ? '[id].[hash].css' : '[id].css',
+            }))
         }
 
         if (buildType === 'prod') {
@@ -165,6 +194,10 @@ exports.genWebpackConfig = (buildType = 'dev') => {
             ]))
         }
 
+        conf.plugins.push(new WebDebugger({
+            enable: !(process.env.NODE_ENV === 'production' && process.env.MODE === 'production')
+        }))
+
         const webpackConfig = merge(buildConfig, {
             output: {
                 path: path.join(config.build.assetsRoot, modules[moduleName].output),
@@ -172,9 +205,6 @@ exports.genWebpackConfig = (buildType = 'dev') => {
                 publicPath: path.join('/', modules[moduleName].output, '/')
             }
         }, conf)
-
-        // resolve client env
-        const clientEnv = resolveClientEnv(webpackConfig)
 
         webpackConfig.plugins.unshift(new webpack.EnvironmentPlugin(clientEnv))
         return webpackConfig
@@ -207,9 +237,7 @@ function genHtmlWebpackPluginConfig (buildType, entry, entryName, filename = 'in
             inject: true,
             chunks: ['vendors', entryName],
             title: entry.title || entry.templateParameters.title,
-            templateParameters: {
-                title: entry.title || entry.templateParameters.title
-            }
+            templateParameters: genTemplateParametersGenerator(entry)
         })
     } else {
         return new HtmlWebpackPlugin({
@@ -218,9 +246,7 @@ function genHtmlWebpackPluginConfig (buildType, entry, entryName, filename = 'in
             inject: true,
             chunks: ['vendors', entryName],
             title: entry.title || entry.templateParameters.title,
-            templateParameters: {
-                title: entry.title || entry.templateParameters.title
-            },
+            templateParameters: genTemplateParametersGenerator(entry),
             minify: {
                 removeComments: true,
                 collapseWhitespace: true,
@@ -235,10 +261,16 @@ function genHtmlWebpackPluginConfig (buildType, entry, entryName, filename = 'in
 }
 
 exports.initNodeEnv = () => {
-    const NODE_ENV = dotenv.config({
-        debug: process.env.DEBUG,
-        path: path.join(__dirname, `../env/.env.${process.env.MODE}`)
-    })
+    const NODE_ENV = {
+        ...dotenv.config({
+            debug: process.env.DEBUG,
+            path: path.join(__dirname, '../env/.env._base')
+        }),
+        ...dotenv.config({
+            debug: process.env.DEBUG,
+            path: path.join(__dirname, `../env/.env.${process.env.MODE}`)
+        })
+    }
     dotenvExpand(NODE_ENV)
 }
 
@@ -259,7 +291,7 @@ exports.cleanWorkspace = () => {
 
 const prefixRE = /^WEB_APP_/
 
-function resolveClientEnv(webpackConfig) {
+function resolveClientEnv() {
     const env = {}
     Object.keys(process.env).forEach(key => {
         if (prefixRE.test(key)
@@ -277,4 +309,33 @@ function resolvePath (filePath) {
     return path.isAbsolute(filePath)
         ? filePath
         : path.join(__dirname, '../modules', filePath)
+}
+
+/**
+ * The default for options.templateParameter
+ * Generate the template parameters
+ */
+function genTemplateParametersGenerator (entry) {
+    return function templateParametersGenerator (compilation, assets, options) {
+
+        // Try to use absolute path while loading stylesheet
+        if (assets.extracted && assets.extracted.css) {
+            assets.extracted.css.forEach(css => {
+                if (!path.isAbsolute(css.file) && css.file.indexOf(assets.publicPath) < 0) {
+                    css.file = assets.publicPath + css.file
+                }
+            })
+        }
+        return {
+            title: entry.title || entry.templateParameters.title,
+            ...entry.templateParameters,
+            compilation: compilation,
+            webpack: compilation.getStats().toJson(),
+            webpackConfig: compilation.options,
+            htmlWebpackPlugin: {
+                files: assets,
+                options: options
+            }
+        }
+    }
 }

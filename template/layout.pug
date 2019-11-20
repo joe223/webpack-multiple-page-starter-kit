@@ -21,5 +21,9 @@ html
 
         block footer
 
+        script
+            | console.log('we are in #{WEB_ENV.NODE_ENV} mode')
+
         block scripts
-            console.log('Hello word')
+            script
+                | console.log('Hello word')

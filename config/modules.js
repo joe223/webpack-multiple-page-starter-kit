@@ -10,7 +10,7 @@ module.exports = {
         entries: {
             // EntryName is 'index'
             index: {
-                title: 'nest',
+                title: 'Title',
                 // Absolute path is allowable
                 entry: 'home/index.js',
                 template: 'home/index.pug',
@@ -25,7 +25,7 @@ module.exports = {
             },
             // EntryName is 'en'
             en: {
-                title: 'nest',
+                title: 'Title',
                 entry: 'home/index.js',
                 template: 'home/index.pug',
                 output: 'en/index.html',
