@@ -1,4 +1,5 @@
 // https://eslint.org/docs/user-guide/configuring
+const baseRules = require('./config/eslint-rules')
 
 module.exports = {
     root: true,
@@ -26,6 +27,7 @@ module.exports = {
     },
     // add your custom rules here
     rules: {
+        ...baseRules,
         // don"t require .vue extension when importing
         "import/extensions": ["error", "always", {
             js: "never",
