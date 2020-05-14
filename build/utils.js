@@ -264,11 +264,11 @@ exports.initNodeEnv = () => {
     const NODE_ENV = {
         ...dotenv.config({
             debug: process.env.DEBUG,
-            path: path.join(__dirname, '../env/.env._base')
+            path: path.join(__dirname, `../env/.env.${process.env.MODE}`)
         }),
         ...dotenv.config({
             debug: process.env.DEBUG,
-            path: path.join(__dirname, `../env/.env.${process.env.MODE}`)
+            path: path.join(__dirname, '../env/.env._base')
         })
     }
     dotenvExpand(NODE_ENV)
